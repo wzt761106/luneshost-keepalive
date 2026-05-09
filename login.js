@@ -26,7 +26,7 @@ function randomDelay(minMs, maxMs) {
   try {
     // 1. 打开登录页
     console.log('[1] 正在打开登录页面...');
-    await page.goto('https://betadash.lunes.host/login', { waitUntil: 'networkidle' });
+    await page.goto('https://betadash.lunes.host/login', { waitUntil: 'domcontentloaded' });
     await randomDelay(2000, 4000);
 
     // 2. 填写邮箱
@@ -49,7 +49,7 @@ function randomDelay(minMs, maxMs) {
 
     // 5. 进入服务器页面
     console.log(`[5] 正在进入服务器页面 (ID: ${SERVER_ID})...`);
-    await page.goto(`https://betadash.lunes.host/servers/${SERVER_ID}`, { waitUntil: 'networkidle' });
+    await page.goto(`https://betadash.lunes.host/servers/${SERVER_ID}`, { waitUntil: 'domcontentloaded' });
     console.log(`    当前 URL: ${page.url()}`);
 
     if (page.url().includes('/login')) {
