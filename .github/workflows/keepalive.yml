@@ -25,4 +25,5 @@ jobs:
         env:
           LUNESHOST_EMAIL:    ${{ secrets.LUNESHOST_EMAIL }}
           LUNESHOST_PASSWORD: ${{ secrets.LUNESHOST_PASSWORD }}
+          TWOCAPTCHA_KEY:     ${{ secrets.TWOCAPTCHA_KEY }}
         run: node login.js
