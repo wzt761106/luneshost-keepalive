@@ -36,7 +36,7 @@ GitHub Actions 按计划（每 5 天）自动运行一个脚本：
 
 ```
 ├── login.js                        # 主脚本
-├── requirements.txt                # Python 依赖
+├── package.json                    # node.js 依赖
 └── .github/
     └── workflows/
         └── keepalive.yml           # 定时任务配置
