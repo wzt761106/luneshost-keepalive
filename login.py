@@ -97,20 +97,26 @@ def visit_server(session):
         print(f"    已停留 {(i+1)*5} / {STAY_SECONDS} 秒")
     print(f"    ✅ 已停留 {STAY_SECONDS} 秒")
 
+import random
+
+def human_delay(min_s=1.5, max_s=4.0):
+    t = random.uniform(min_s, max_s)
+    print(f"    (等待 {t:.1f} 秒...)")
+    time.sleep(t)
+
 def main():
     print("=" * 50)
     print("  LunesHost 自动登录保活脚本")
     print("=" * 50)
 
-    # 用 cloudscraper 通过 Cloudflare，拿到 CF cookie
     scraper = cloudscraper.create_scraper(
         browser={"browser": "chrome", "platform": "windows", "mobile": False}
     )
 
-    # 第一步：用 scraper 访问登录页（绕过 CF），同时把 CF cookies 存下来
+    # 打开登录页，停一下再操作
     csrf_token, sitekey = get_login_page(scraper)
+    human_delay(2.0, 5.0)   # 模拟用户在页面上停留、阅读
 
-    # 把 CF clearance cookies 转移到普通 session，解决 Flask cookie 不保存的问题
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -119,19 +125,20 @@ def main():
         session.cookies.set(cookie.name, cookie.value, domain=cookie.domain)
     print(f"    转移的 CF cookies: {list(session.cookies.keys())}")
 
-    # 第二步：验证码
     captcha_token = None
     if sitekey:
         captcha_token = solve_hcaptcha(sitekey, LOGIN_URL)
+        human_delay(1.5, 3.0)   # 验证码完成后停一下再点提交
     else:
         print("[2] 无验证码，跳过")
+        human_delay(1.0, 2.5)   # 模拟填写表单的时间
 
-    # 第三步：用普通 session 登录（正确保存 Flask session cookie）
     if not do_login(session, csrf_token, captcha_token):
         print("\n❌ 登录失败")
         raise SystemExit(1)
 
-    # 第四步：访问服务器页面并停留
+    human_delay(2.0, 4.0)   # 模拟登录后页面加载、用户看 dashboard
+
     visit_server(session)
     print("\n✅ 保活完成！")
 
