@@ -100,7 +100,12 @@ async function solveTurnstile(sitekey, pageUrl) {
 
     // 6. 进入服务器页面
     console.log(`[6] 正在进入服务器页面 (ID: ${SERVER_ID})...`);
-    await page.goto(SERVER_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    try {
+      await page.goto(SERVER_URL, { waitUntil: 'load', timeout: 60000 });
+    } catch (e) {
+    // 超时不要紧，只要页面开始加载就行
+      console.log(`    页面加载超时（正常现象），继续停留...`);
+    }
     if (page.url().includes('/login')) throw new Error('访问服务器页面被重定向到登录页');
     console.log(`    ✅ 成功进入: ${page.url()}`);
 
