@@ -1,4 +1,6 @@
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+chromium.use(StealthPlugin());
 
 const EMAIL     = process.env.LUNESHOST_EMAIL;
 const PASSWORD  = process.env.LUNESHOST_PASSWORD;
@@ -17,7 +19,7 @@ function randomDelay(minMs, maxMs) {
   console.log('==================================================');
 
   const browser = await chromium.launch({
-    headless: false,
+    headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const context = await browser.newContext({
