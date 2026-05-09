@@ -109,11 +109,11 @@ async function solveTurnstile(sitekey, pageUrl) {
     if (page.url().includes('/login')) throw new Error('访问服务器页面被重定向到登录页');
     console.log(`    ✅ 成功进入: ${page.url()}`);
 
-    // 7. 停留 35 秒
+    // 7. 停留 60 秒
     console.log('    开始停留计时...');
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 1; i <= 12; i++) {
       await sleep(5000);
-      console.log(`    已停留 ${i * 5} / 35 秒`);
+      console.log(`    已停留 ${i * 5} / 60 秒`);
     }
 
     console.log('\n✅ 保活完成！');
