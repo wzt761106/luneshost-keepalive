@@ -1,5 +1,6 @@
 import os
 import time
+import random
 import requests
 import cloudscraper
 from bs4 import BeautifulSoup
@@ -96,8 +97,6 @@ def visit_server(session):
         time.sleep(5)
         print(f"    已停留 {(i+1)*5} / {STAY_SECONDS} 秒")
     print(f"    ✅ 已停留 {STAY_SECONDS} 秒")
-
-import random
 
 def human_delay(min_s=1.5, max_s=4.0):
     t = random.uniform(min_s, max_s)
