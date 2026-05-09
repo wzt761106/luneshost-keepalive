@@ -42,7 +42,7 @@ function randomDelay(minMs, maxMs) {
     // 4. 点击登录
     console.log('[4] 正在点击登录...');
     await page.click('button[type="submit"], input[type="submit"]');
-    await page.waitForURL(url => !url.includes('/login'), { timeout: 15000 });
+    await page.waitForURL(url => !url.toString().includes('/login'), { timeout: 15000 });
     console.log(`    ✅ 登录成功！当前页面: ${page.url()}`);
 
     await randomDelay(2000, 4000);
