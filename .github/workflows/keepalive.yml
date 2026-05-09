@@ -1,0 +1,32 @@
+name: LunesHost 自动登录保活
+
+on:
+  # 每 5 天自动运行一次（每天 UTC 08:00）
+  schedule:
+    - cron: "0 8 */5 * *"
+
+  # 允许手动在 GitHub 网页上点击运行
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 执行登录保活
+        env:
+          LUNESHOST_EMAIL:    ${{ secrets.LUNESHOST_EMAIL }}
+          LUNESHOST_PASSWORD: ${{ secrets.LUNESHOST_PASSWORD }}
+          TWOCAPTCHA_KEY:     ${{ secrets.TWOCAPTCHA_KEY }}
+        run: python login.py
