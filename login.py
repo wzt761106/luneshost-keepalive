@@ -23,7 +23,7 @@ def get_login_page(session):
     hcaptcha_div = soup.find(class_="h-captcha")
     sitekey = hcaptcha_div["data-sitekey"] if hcaptcha_div else None
     print(f"    CSRF token: {csrf_token[:20]}..." if csrf_token else "    CSRF token: 未找到")
-    print(f"    hCaptcha sitekey: {sitekey}" if sitekey else "    hCaptcha: 未检测到（可能无验证码）")
+    print(f"    hCaptcha sitekey: {sitekey}" if sitekey else "    hCaptcha: 未检测到")
     return csrf_token, sitekey
 
 def solve_hcaptcha(sitekey, page_url):
@@ -48,83 +48,90 @@ def solve_hcaptcha(sitekey, page_url):
         if result.get("request") != "CAPCHA_NOT_READY":
             raise Exception(f"2Captcha 返回错误: {result}")
         print(f"    第 {attempt+1} 次等待...")
-    raise TimeoutError("hCaptcha 解答超时（超过 3 分钟）")
+    raise TimeoutError("hCaptcha 解答超时")
 
 def do_login(session, csrf_token, captcha_token):
     print("[3] 正在登录...")
     payload = {"email": EMAIL, "password": PASSWORD, "h-captcha-response": captcha_token or ""}
     if csrf_token:
         payload["_csrf_token"] = csrf_token
+
     resp = session.post(LOGIN_URL, data=payload, headers={
-        "Referer": LOGIN_URL, "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": LOGIN_URL,
+        "Content-Type": "application/x-www-form-urlencoded",
     }, allow_redirects=True)
-    if resp.url != LOGIN_URL and "login" not in resp.url.lower():
+
+    print(f"    POST 后 URL: {resp.url}")
+    print(f"    Cookies: {list(session.cookies.keys())}")
+
+    # 只信任 URL 跳转，不信任页面内容
+    if "login" not in resp.url.lower():
         print(f"    ✅ 登录成功！当前页面: {resp.url}")
         return True
-    elif "logout" in resp.text.lower() or "dashboard" in resp.text.lower():
-        print("    ✅ 登录成功！（页面含 dashboard/logout 关键词）")
-        return True
     else:
-        print(f"    ❌ 登录失败，当前 URL: {resp.url}")
+        print(f"    ❌ 仍在登录页，登录失败")
+        # 打印错误提示
         soup = BeautifulSoup(resp.text, "html.parser")
-        err = soup.find(class_=lambda c: c and "error" in c.lower())
-        if err:
-            print(f"    错误信息: {err.get_text(strip=True)}")
+        for tag in soup.find_all(class_=lambda c: c and ("error" in c.lower() or "alert" in c.lower())):
+            txt = tag.get_text(strip=True)
+            if txt:
+                print(f"    页面提示: {txt}")
         return False
 
 def visit_server(session):
     print(f"[4] 正在进入服务器页面 (ID: {SERVER_ID})...")
-    
-    # 打印当前 cookies，确认 session 存在
-    cookies = dict(session.cookies)
-    print(f"    当前 cookies: {list(cookies.keys())}")
-    
     resp = session.get(SERVER_URL, allow_redirects=True)
     print(f"    最终 URL: {resp.url}")
     print(f"    状态码: {resp.status_code}")
 
+    if "login" in resp.url.lower():
+        raise Exception("访问服务器页面被重定向到登录页，session 未正确保持")
+
     if resp.status_code != 200:
         raise Exception(f"服务器页面返回 {resp.status_code}")
 
-    # 不再依赖 URL 判断，改为检查页面内容
-    page_text = resp.text.lower()
-    if "login" in resp.url.lower() or ("<title>" in page_text and "login" in page_text[:500]):
-        # 尝试重新登录后再访问
-        print("    ⚠️  Session 丢失，尝试重新登录...")
-        csrf_token, sitekey = get_login_page(session)
-        captcha_token = None
-        if sitekey:
-            captcha_token = solve_hcaptcha(sitekey, LOGIN_URL)
-        if not do_login(session, csrf_token, captcha_token):
-            raise Exception("重新登录失败")
-        resp = session.get(SERVER_URL, allow_redirects=True)
-        print(f"    重试后状态码: {resp.status_code}, URL: {resp.url}")
-        if resp.status_code != 200 or "login" in resp.url.lower():
-            raise Exception("重新登录后仍无法访问服务器页面")
-
-    print("    ✅ 成功进入服务器页面，开始停留计时...")
+    print("    ✅ 成功进入，开始停留计时...")
     STAY_SECONDS = 35
     for i in range(STAY_SECONDS // 5):
         time.sleep(5)
-        print(f"    已停留 {(i+1)*5} 秒 / {STAY_SECONDS} 秒")
-    print(f"    ✅ 已在服务器页面停留 {STAY_SECONDS} 秒")
+        print(f"    已停留 {(i+1)*5} / {STAY_SECONDS} 秒")
+    print(f"    ✅ 已停留 {STAY_SECONDS} 秒")
 
 def main():
     print("=" * 50)
     print("  LunesHost 自动登录保活脚本")
     print("=" * 50)
-    session = cloudscraper.create_scraper(
+
+    # 用 cloudscraper 通过 Cloudflare，拿到 CF cookie
+    scraper = cloudscraper.create_scraper(
         browser={"browser": "chrome", "platform": "windows", "mobile": False}
     )
-    csrf_token, sitekey = get_login_page(session)
+
+    # 第一步：用 scraper 访问登录页（绕过 CF），同时把 CF cookies 存下来
+    csrf_token, sitekey = get_login_page(scraper)
+
+    # 把 CF clearance cookies 转移到普通 session，解决 Flask cookie 不保存的问题
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    })
+    for cookie in scraper.cookies:
+        session.cookies.set(cookie.name, cookie.value, domain=cookie.domain)
+    print(f"    转移的 CF cookies: {list(session.cookies.keys())}")
+
+    # 第二步：验证码
     captcha_token = None
     if sitekey:
         captcha_token = solve_hcaptcha(sitekey, LOGIN_URL)
     else:
         print("[2] 无验证码，跳过")
+
+    # 第三步：用普通 session 登录（正确保存 Flask session cookie）
     if not do_login(session, csrf_token, captcha_token):
-        print("\n❌ 登录失败，请检查账号密码。")
+        print("\n❌ 登录失败")
         raise SystemExit(1)
+
+    # 第四步：访问服务器页面并停留
     visit_server(session)
     print("\n✅ 保活完成！")
 
