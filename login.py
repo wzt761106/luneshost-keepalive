@@ -1,6 +1,7 @@
 import os
 import time
 import requests
+import cloudscraper
 from bs4 import BeautifulSoup
 
 # ============================================================
@@ -13,20 +14,12 @@ TWOCAPTCHA_KEY = os.environ["TWOCAPTCHA_KEY"]        # 2Captcha API Key
 BASE_URL  = "https://betadash.lunes.host"
 LOGIN_URL = f"{BASE_URL}/login"
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    )
-}
-
 # ============================================================
 # 第一步：获取登录页面，提取 CSRF token 和 hCaptcha sitekey
 # ============================================================
 def get_login_page(session):
     print("[1] 正在获取登录页面...")
-    resp = session.get(LOGIN_URL, headers=HEADERS)
+    resp = session.get(LOGIN_URL)
     resp.raise_for_status()
 
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -104,7 +97,6 @@ def do_login(session, csrf_token, captcha_token):
         payload["_csrf_token"] = csrf_token
 
     resp = session.post(LOGIN_URL, data=payload, headers={
-        **HEADERS,
         "Referer": LOGIN_URL,
         "Content-Type": "application/x-www-form-urlencoded",
     }, allow_redirects=True)
@@ -133,7 +125,10 @@ def main():
     print("  LunesHost 自动登录保活脚本")
     print("=" * 50)
 
-    session = requests.Session()
+    # cloudscraper 可以绕过 Cloudflare 的机器人检测
+    session = cloudscraper.create_scraper(
+        browser={"browser": "chrome", "platform": "windows", "mobile": False}
+    )
 
     # 1. 获取登录页
     csrf_token, sitekey = get_login_page(session)
@@ -151,7 +146,7 @@ def main():
     if success:
         # 4. 额外访问一下 dashboard 确保活跃
         print("[4] 访问 Dashboard 确认活跃...")
-        dash = session.get(BASE_URL, headers=HEADERS)
+        dash = session.get(BASE_URL)
         print(f"    Dashboard 状态码: {dash.status_code}")
         print("\n✅ 保活完成！")
     else:
