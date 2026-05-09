@@ -4,7 +4,7 @@
 
 ## 工作原理
 
-GitHub Actions 按计划（每 5 天）自动运行一个 Python 脚本：
+GitHub Actions 按计划（每 5 天）自动运行一个脚本：
 1. 访问 `betadash.lunes.host/login`
 2. 提取 CSRF token 和 hCaptcha sitekey
 3. 调用 2Captcha API 解决验证码
@@ -35,7 +35,7 @@ GitHub Actions 按计划（每 5 天）自动运行一个 Python 脚本：
 ## 文件结构
 
 ```
-├── login.py                        # 主脚本
+├── login.js                        # 主脚本
 ├── requirements.txt                # Python 依赖
 └── .github/
     └── workflows/
