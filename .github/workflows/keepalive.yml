@@ -25,4 +25,8 @@ jobs:
         env:
           LUNESHOST_EMAIL:    ${{ secrets.LUNESHOST_EMAIL }}
           LUNESHOST_PASSWORD: ${{ secrets.LUNESHOST_PASSWORD }}
-        run: node login.js
+          DISPLAY: ":99"
+        run: |
+          Xvfb :99 -screen 0 1280x720x24 &
+          sleep 1
+          node login.js
