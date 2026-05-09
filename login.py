@@ -74,13 +74,35 @@ def do_login(session, csrf_token, captcha_token):
 
 def visit_server(session):
     print(f"[4] 正在进入服务器页面 (ID: {SERVER_ID})...")
-    resp = session.get(SERVER_URL)
+    
+    # 打印当前 cookies，确认 session 存在
+    cookies = dict(session.cookies)
+    print(f"    当前 cookies: {list(cookies.keys())}")
+    
+    resp = session.get(SERVER_URL, allow_redirects=True)
+    print(f"    最终 URL: {resp.url}")
     print(f"    状态码: {resp.status_code}")
+
     if resp.status_code != 200:
-        raise Exception(f"服务器页面返回 {resp.status_code}，请确认 SERVER_ID 是否正确")
-    if "login" in resp.url.lower():
-        raise Exception("被重定向到登录页，Session 可能已失效")
-    print("    开始停留计时...")
+        raise Exception(f"服务器页面返回 {resp.status_code}")
+
+    # 不再依赖 URL 判断，改为检查页面内容
+    page_text = resp.text.lower()
+    if "login" in resp.url.lower() or ("<title>" in page_text and "login" in page_text[:500]):
+        # 尝试重新登录后再访问
+        print("    ⚠️  Session 丢失，尝试重新登录...")
+        csrf_token, sitekey = get_login_page(session)
+        captcha_token = None
+        if sitekey:
+            captcha_token = solve_hcaptcha(sitekey, LOGIN_URL)
+        if not do_login(session, csrf_token, captcha_token):
+            raise Exception("重新登录失败")
+        resp = session.get(SERVER_URL, allow_redirects=True)
+        print(f"    重试后状态码: {resp.status_code}, URL: {resp.url}")
+        if resp.status_code != 200 or "login" in resp.url.lower():
+            raise Exception("重新登录后仍无法访问服务器页面")
+
+    print("    ✅ 成功进入服务器页面，开始停留计时...")
     STAY_SECONDS = 35
     for i in range(STAY_SECONDS // 5):
         time.sleep(5)
