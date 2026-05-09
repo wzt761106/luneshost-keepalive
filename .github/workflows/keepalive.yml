@@ -1,32 +1,28 @@
 name: LunesHost 自动登录保活
 
 on:
-  # 每 5 天自动运行一次（每天 UTC 08:00）
   schedule:
     - cron: "0 8 */5 * *"
-
-  # 允许手动在 GitHub 网页上点击运行
   workflow_dispatch:
 
 jobs:
   keepalive:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 拉取代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 配置 Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.11"
+          node-version: "20"
 
       - name: 安装依赖
-        run: pip install -r requirements.txt
+        run: npm install
+
+      - name: 安装 Playwright 浏览器
+        run: npx playwright install chromium --with-deps
 
       - name: 执行登录保活
         env:
           LUNESHOST_EMAIL:    ${{ secrets.LUNESHOST_EMAIL }}
           LUNESHOST_PASSWORD: ${{ secrets.LUNESHOST_PASSWORD }}
-          TWOCAPTCHA_KEY:     ${{ secrets.TWOCAPTCHA_KEY }}
-        run: python login.py
+        run: node login.js
