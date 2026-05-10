@@ -29,4 +29,6 @@ jobs:
           LUNESHOST_EMAIL:    ${{ secrets.LUNESHOST_EMAIL }}
           LUNESHOST_PASSWORD: ${{ secrets.LUNESHOST_PASSWORD }}
           TWOCAPTCHA_KEY:     ${{ secrets.TWOCAPTCHA_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
         run: node login.js
