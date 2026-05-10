@@ -33,6 +33,20 @@ async function solveTurnstile(sitekey, pageUrl) {
   throw new Error('Turnstile 解答超时');
 }
 
+async function notify(msg) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+  try {
+    await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+      chat_id: chatId,
+      text: msg,
+    });
+  } catch (e) {
+    console.log('Telegram 通知发送失败:', e.message);
+  }
+}
+
 (async () => {
   console.log('==================================================');
   console.log('  LunesHost 自动登录保活脚本 (Playwright + 2Captcha)');
@@ -117,8 +131,10 @@ async function solveTurnstile(sitekey, pageUrl) {
     }
 
     console.log('\n✅ 保活完成！');
+    await notify(`✅ LunesHost 保活成功！\n账号：${EMAIL}\n时间：${new Date().toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}`);
   } catch (err) {
     console.error(`\n❌ 出错: ${err.message}`);
+    await notify(`❌ LunesHost 保活失败！\n账号：${EMAIL}\n错误：${err.message}`);
     process.exit(1);
   } finally {
     await browser.close();
