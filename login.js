@@ -6,7 +6,7 @@ chromium.use(StealthPlugin());
 const EMAIL          = process.env.LUNESHOST_EMAIL;
 const PASSWORD       = process.env.LUNESHOST_PASSWORD;
 const TWOCAPTCHA_KEY = process.env.TWOCAPTCHA_KEY;
-const SERVER_ID      = '48195';
+const SERVER_ID      = '48195';  // ← 改成你的服务器ID
 const LOGIN_URL      = 'https://betadash.lunes.host/login';
 const SERVER_URL     = `https://betadash.lunes.host/servers/${SERVER_ID}`;
 
@@ -47,7 +47,7 @@ async function notify(msg) {
   }
 }
 
-(async () => {
+async function run() {
   console.log('==================================================');
   console.log('  LunesHost 自动登录保活脚本 (Playwright + 2Captcha)');
   console.log('==================================================');
@@ -87,17 +87,11 @@ async function notify(msg) {
     if (sitekey) {
       console.log(`    Sitekey: ${sitekey}`);
       const token = await solveTurnstile(sitekey, LOGIN_URL);
-      // 注入 token 到页面
       await page.evaluate((t) => {
         const inputs = document.querySelectorAll('input[name="cf-turnstile-response"], input[name="g-recaptcha-response"]');
         inputs.forEach(i => i.value = t);
-        // 也尝试直接设置 turnstile 的隐藏字段
         const hidden = document.querySelector('input[type="hidden"][name*="turnstile"], input[type="hidden"][name*="cf-"]');
         if (hidden) hidden.value = t;
-        // 触发 turnstile callback（如果存在）
-        if (window.turnstile && window.turnstile.getResponse) {
-          // 已有 response，继续
-        }
       }, token);
       console.log('    Token 已注入');
     } else {
@@ -117,7 +111,6 @@ async function notify(msg) {
     try {
       await page.goto(SERVER_URL, { waitUntil: 'load', timeout: 60000 });
     } catch (e) {
-    // 超时不要紧，只要页面开始加载就行
       console.log(`    页面加载超时（正常现象），继续停留...`);
     }
     if (page.url().includes('/login')) throw new Error('访问服务器页面被重定向到登录页');
@@ -133,10 +126,25 @@ async function notify(msg) {
     console.log('\n✅ 保活完成！');
     await notify(`✅ LunesHost 保活成功！\n账号：${EMAIL}\n时间：${new Date().toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}`);
   } catch (err) {
-    console.error(`\n❌ 出错: ${err.message}`);
-    await notify(`❌ LunesHost 保活失败！\n账号：${EMAIL}\n错误：${err.message}`);
-    process.exit(1);
+    throw err;
   } finally {
     await browser.close();
+  }
+}
+
+(async () => {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await run();
+      break;
+    } catch (err) {
+      console.error(`\n❌ 第 ${attempt} 次出错: ${err.message}`);
+      if (attempt === 2) {
+        await notify(`❌ LunesHost 保活失败！\n账号：${EMAIL}\n错误：${err.message}`);
+        process.exit(1);
+      }
+      console.log('    5秒后自动重试...');
+      await sleep(5000);
+    }
   }
 })();
